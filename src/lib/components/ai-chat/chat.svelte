@@ -20,6 +20,7 @@
 
 	let isOpen = $state(false);
 	let scrollContainer: HTMLDivElement | undefined = $state(undefined);
+	let shouldAutoScroll = $state(true);
 
 	const chat = new Chat({
 		api: api,
@@ -57,7 +58,7 @@
 	}
 
 	function scrollToBottom() {
-		if (scrollContainer) {
+		if (scrollContainer && shouldAutoScroll) {
 			tick().then(() => {
 				if (scrollContainer)
 					scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -65,8 +66,21 @@
 		}
 	}
 
+	function handleScroll() {
+		if (scrollContainer) {
+			const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+			const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+			shouldAutoScroll = isAtBottom;
+		}
+	}
+
 	$effect(() => {
 		if (chat.messages.length && scrollContainer) {
+			// Force scroll only on new user message if we want, but keeping smart scroll logic
+			// If user sends a message, they usually want to see the response, so we can force it once here
+			if (chat.messages[chat.messages.length - 1].role === "user") {
+				shouldAutoScroll = true;
+			}
 			scrollToBottom();
 		}
 	});
@@ -176,6 +190,7 @@
 
 			<div
 				bind:this={scrollContainer}
+				onscroll={handleScroll}
 				class="flex-1 overflow-y-auto p-5 scroll-smooth bg-[#FAFAFA] relative"
 			>
 				{#if chat.messages.length === 0}
